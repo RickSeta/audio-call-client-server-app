@@ -4,7 +4,12 @@
 ![image](https://user-images.githubusercontent.com/54965077/200020098-4d0e77fb-fd55-4749-bf1f-1022a5a4b5c1.png)
 
 Links:
+
 https://realpython.com/python-sockets/#socket-api-overview 
+
 https://pythontic.com/modules/socket/udp-client-server-example 
+
 https://www.cs.dartmouth.edu/~campbell/cs60/socketprogramming.html 
+
 https://pypi.org/project/PyAudio/ 
+
