@@ -7,9 +7,10 @@ RATE=44100
 CHANNELS=1
 CHUNK=1024
 RECORD_SECONDS=5
+OUTPUT=True
 
 p = pyaudio.PyAudio()
-stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+stream = p.open(rate=RATE, channels=CHANNELS, format=FORMAT, input=True, output=OUTPUT, frames_per_buffer=CHUNK)
 frames = []
 
 print("* Recording Started")
