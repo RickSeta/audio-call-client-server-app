@@ -21,19 +21,18 @@ class app():
     
     
     def login(self): 
-        self.clientTCP.connect(cc.ip_address, cc.porta_servidor)   
-        while True:
+        self.clientTCP.connect(cc.ip_address, cc.porta_servidor)
+        mensagem = json.loads(self.clientTCP.recv())
+        validacao = mensagem['resposta']
+        while validacao != 'ACEITO':
             self.nome = input()
             if (self.nome == "quit"):
                 self.clientTCP.close()
                 quit()
             else:
-                mensagem = {'mensagem':'LOGIN', 'nome':self.nome}
+                mensagem = {'mensagem':'REGISTRO', 'nome':self.nome}
                 self.clientTCP.send(json.dumps(mensagem), cc.ip_address, cc.porta_servidor)
-                resposta = json.loads(self.clientTCP.recv())
-                if resposta['mensagem'] == "ACEITO":
-                    break
-        
+                validacao = json.loads(self.clientTCP.recv())
         self.listenThread = threading.Thread(self.escuta, self.serverUDP)
         self.menu()
     
@@ -47,40 +46,35 @@ class app():
         
 
     def menu(self):
-        helpers.limpa_tela()
-        self.lista_usuarios()
+        helpers.mensagem_menu()
         while self.estado == Estado.LIVRE:
             self.entrada_do_usuario()
 
     def entrada_do_usuario (self):
-        if self.estado == Estado.LI:
-            print("Para iniciar uma ligação com algum usuário, digite o seu nome")
-            print('Para sair da aplicação, envie "q"')
-            print('Para atualizar a lista de pessoas disponíveis, envie "r"')
+        if self.estado == Estado.LIVRE:
             entrada = input()
             if (entrada == 'q'):
                 self.sair_da_aplicacao()
-            elif (entrada == 'r'):
-                self.atualiza_menu()
+            # elif (entrada == 'r'):
+            #     self.atualiza_menu()
             else:
-                for pessoa in range(len(self.lista)):
-                    if entrada in self.lista[pessoa]['nome']:
-                        enderecoContato = self.lista[pessoa]['IP']
-                        portaContato = self.lista[pessoa]['port']
-                        self.envia_pedido(enderecoContato, portaContato)
+                self.envia_pedido(entrada)
+                # for pessoa in range(len(self.lista)):
+                #     if entrada in self.lista[pessoa]['nome']:
+                #         enderecoContato = self.lista[pessoa]['IP']
+                #         portaContato = self.lista[pessoa]['port']
+                #         self.envia_pedido(enderecoContato, portaContato)
                         
-    def envia_pedido(self, endereco, porta):
+    def envia_pedido(self, nome):
         self.estado = Estado.CONVIDANDO
-        self.serverUDP.bind(endereco, porta)
+        
         mensagem = {
             'mensagem':'CONVITE',
             'dados':{
-                'nome': self.nome,
-                'IP': cc.ip_address,
-                'port': cc.porta_servidor
+                'nome': nome,
             }
         }
-        self.serverUDP.sendto(json.dumps(mensagem), endereco, porta)
+        self.clientTCP.send(json.dumps(mensagem))
 
     
     def escuta(self, server):
@@ -92,13 +86,9 @@ class app():
             mensagem = json.loads(mensagem)
             if self.estado == Estado.LIVRE:
                 if mensagem['mensagem'] == 'CONVITE':
-                    helpers.limpa_tela()
+                    helpers.mensagem_da_aplicacao(mensagem['mensagem'])
                     self.estado == Estado.CONVIDADO
-                    enderecoContato = mensagem['dados']['ip']
-                    portaContato = mensagem['dados']['port']
-                    print(mensagem['dados']['nome'] + "quer iniciar uma chamada")
-                    print("Para aceitar a chamada, envie s")
-                    print("Para recusar a chamada, envie n")
+                    helpers.mensagem_convidado(mensagem['dados']["nome"])
                     resposta = input()
                     while resposta != 's' and resposta != 'n':
                         resposta = input()
@@ -114,17 +104,20 @@ class app():
                         self.estado = Estado.LIVRE
                         mensagem = {"mensagem": "RECUSADO"}
                         self.serverUDP.sendto(json.dumps(mensagem), _address=(enderecoContato, portaContato))
-                        self.atualiza_menu()
+                        helpers.mensagem_recusado()
 
 
             if self.estado == Estado.CONVIDANDO:
                 if mensagem['mensagem'] == "ACEITO":
+                    helpers.mensagem_da_aplicacao(mensagem['mensagem'])
                     self.estado = Estado.OCUPADO
                     thread = threading.Thread(self.envia_audio, 'endereço do contato fudeu')
                     thread.start()
                     # cria thread de envio
                 elif mensagem['mensagem'] == 'RECUSADO':
+                    helpers.mensagem_da_aplicacao(mensagem['mensagem'])
                     self.estado = Estado.LIVRE
+                    self.menu()
                     
             if self.estado == Estado.OCUPADO:
                 if mensagem['mensagem'] == "AUDIO":
@@ -140,20 +133,7 @@ class app():
         py_audio = pyaudio.PyAudio()
         input_stream = py_audio.open(ac.SETTINGS)
         while self.estado == Estado.OCUPADO:
-            data = input_stream.read(ac.BUFFER, exception_on_overflow=False)
-            self.serverUDP.sendto(data, enderecoContato, portaContato)
+            data = {"mensagem": "AUDIO", "dados":input_stream.read(ac.BUFFER, exception_on_overflow=False)}
+            self.serverUDP.sendto(json.dumps(data), enderecoContato, portaContato)
         self.serverUDP.sendto('ENCERRAR_CHAMADA'.encode(), enderecoContato, portaContato)
         self.atualiza_menu()
-        
-    
-    def atualiza_menu(self):
-        self.menu()
-
-    def lista_usuarios(self):
-        mensagem = 'LISTAR_USUARIOS'
-        self.clientTCP.send(mensagem.encode())
-        self.lista = self.clientTCP.recv().decode()
-        for usuario in len(self.lista):
-            print(self.lista[usuario]['nome'])
-
-
