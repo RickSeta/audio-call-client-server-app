@@ -33,11 +33,14 @@ class Cliente:
             nome = nome_inicial
             primeira = True
             aberto = True
+            registro = True
             while aberto:
 
-                if primeira:
-                    s.connect((host, int(port)))
-                    primeira = False
+                if registro:
+                    registro = False
+                    if primeira:
+                        s.connect((host, int(port)))
+                        primeira = False
                     m = {"nome": nome, "tipo-pedido": 'r'}
                 else:
                     try:
@@ -59,7 +62,10 @@ class Cliente:
                 print("data " + data)
                 data = s.recv(len(data)+10).decode("utf-8")
                 print(f"Recebido {data!r}")
-
+                if data == "Por favor escolha outro nome":
+                    nome = input("Novo nome: ")
+                    registro = True
+            print("Cliente finalizando")
         except KeyboardInterrupt:
             print("Crtl+C pressionado, fechando servidor")
 

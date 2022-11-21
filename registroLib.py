@@ -91,6 +91,7 @@ class Pacote:
                 elif tipo_pedido == "r":
                     print('registro')
                     self._registra_lista(content['nome'])
+
                 elif tipo_pedido == 'f':
                     aberto = False
                     self.encerra_conexao(content['nome'])
@@ -110,8 +111,6 @@ class Pacote:
             print("Por favor escolha outro nome")
             self._send_buffer = b'Por favor escolha outro nome'
             self._write()
-            self.close()
-            print(self.listaReg)
 
     def consulta_lista(self, nome):
         if nome in self.listaReg:
