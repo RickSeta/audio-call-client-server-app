@@ -2,8 +2,9 @@
 import json
 import selectors
 import socket
+from datetime import time
+
 import registroLib
-sel = selectors.DefaultSelector()
 messages = [b"Message 1 from client.", b"Message 2 from client."]
 
 
@@ -26,24 +27,31 @@ PORT = 5000  # The port used by the server
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-    events = selectors.EVENT_READ | selectors.EVENT_WRITE
-    message = registroLib.Pacote(sel, s)
-    sel.register(s, events, data=message)
     try:
-        while True:
+        nome = input("Qual seu nome? ")
+        primeira = True
+        aberto = True
+        while aberto:
 
-            nome = input("Qual seu nome? ")
+            if primeira:
+                s.connect((HOST, PORT))
+                primeira = False
+                m = {"nome": nome, "tipo-pedido": 'r'}
+            else:
+                consultaTipo = input("f para fechar e c para consulta: ")
+                if consultaTipo == 'c':
+                    m = {"nome": nome, "tipo-pedido": consultaTipo, "consulta": input("Qual nome do usuario a consultar?")}
+                elif consultaTipo == 'f':
+                    print("Encerrando cliente!")
+                    aberto = False
+                    m = {"nome": nome, "tipo-pedido": consultaTipo}
 
-            m = {"nome": nome, "tipo-pedido": input("r para registro e c para consulta: ")}
             data = json.dumps(m)
-            s.connect((HOST, PORT))
-            s.sendall(bytes(data, encoding="utf-8"))
+            num = s.send(bytes(data, encoding="utf-8"))
+            print("data " + data)
             data = s.recv(len(data)+10).decode("utf-8")
             print(f"Received {data!r}")
-            events = sel.select(timeout=None)
 
     except KeyboardInterrupt:
         print("Crtl+C pressionado, fechando servidor")
-    finally:
-        sel.close()
 

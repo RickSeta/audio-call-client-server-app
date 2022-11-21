@@ -65,34 +65,41 @@ class Pacote:
             self.sock = None
 
     def processar_recebimento(self):
+        aberto = True
+        while aberto:
+            self._read()
+            if self._recv_buffer:
+                content = self._json_decode(
+                    self._recv_buffer, "utf-8"
+                )
+                self._recv_buffer = b""
 
-        self._read()
-        if self._recv_buffer:
-            content = self._json_decode(
-                self._recv_buffer, "utf-8"
-            )
-            self._recv_buffer = b""
+                tipo_pedido = content["tipo-pedido"]
+                if tipo_pedido == "c":
+                    print(content)
+                    print('consulta')
+                    self.consulta_lista(content['consulta'])
+                elif tipo_pedido == "r":
+                    print('registro')
+                    self._registra_lista(content['nome'])
+                elif tipo_pedido == 'f':
+                    aberto = False
+                    self.encerra_conexao(content['nome'])
+                else:
+                    raise ValueError(f"Seguinte tipo nao valido: '{tipo_pedido}'.")
 
-            tipo_pedido = content["tipo-pedido"]
-            if tipo_pedido == "c":
-                print('consulta')
-                self.consulta_lista(content['nome'])
-            elif tipo_pedido == "r":
-                print('registro')
-                self._registra_lista(content['nome'])
-            else:
-                raise ValueError(f"Seguinte tipo nao valido: '{tipo_pedido}'.")
-        else:
-            print("Buffer vazio")
 
     def _registra_lista(self, nome):
         if nome not in self.listaReg:
             self.listaReg[nome] = {"ip": self.endereco[0], "porta": self.endereco[1]}
             print(self.listaReg)
-            self._send_buffer = self._json_encode(self.listaReg, "utf-8")
+            #self._send_buffer = self._json_encode(self.listaReg, "utf-8")
+            self._send_buffer = b'Usuario registrado!'
             self._write()
         else:
             print("Por favor escolha outro nome")
+            self._send_buffer = b'Por favor escolha outro nome'
+            self._write()
             print(self.listaReg)
 
     def consulta_lista(self, nome):
@@ -104,6 +111,11 @@ class Pacote:
 
         self._write()
 
+    def encerra_conexao(self,nome):
+        self._send_buffer = b'Encerrando conexao!'
+        del self.listaReg[nome]
+        self._write()
+        self.close()
 """
     consulta
     {
