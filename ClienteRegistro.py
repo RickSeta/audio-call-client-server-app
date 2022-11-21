@@ -15,6 +15,7 @@ class Cliente:
     def __init__(self):
         self._condition_espera = threading.Condition()
         self._condition_func = threading.Condition()
+        self._ultima_consulta = ""
 
     HOST = "127.0.0.1"  # The server's hostname or IP address
     PORT = 5000  # The port used by the server
@@ -23,6 +24,9 @@ class Cliente:
         self._condition_espera.acquire()
         self._condition_espera.notify_all()
         self._condition_espera.release()
+
+    def get_ultima_consulta(self):
+        return self._ultima_consulta
 
     def iniciar_cliente(self, nome_inicial, host, port):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -34,6 +38,7 @@ class Cliente:
             primeira = True
             aberto = True
             registro = True
+            consultaTipo = ""
             while aberto:
 
                 if registro:
@@ -62,6 +67,8 @@ class Cliente:
                 print("data " + data)
                 data = s.recv(len(data)+10).decode("utf-8")
                 print(f"Recebido {data!r}")
+                if consultaTipo == 'c':
+                    self._ultima_consulta = data
                 if data == "Por favor escolha outro nome":
                     nome = input("Novo nome: ")
                     registro = True
