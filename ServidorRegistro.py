@@ -4,13 +4,10 @@ import selectors
 import registroLib
 
 from _thread import *
-import threading
-
-print_lock = threading.Lock()
 
 listaUsuarios = {}
 
- 
+
 def aceitar_conexao_paralela(sock):
     socketCliente, enderecoCliente = sock.accept()  # Aceita nova conexao retornando o socket e o endereco
     print(f"Conexao aceita de {enderecoCliente}")
@@ -36,7 +33,6 @@ try:    #agora começa o loop de evento
     while True:
         print(f"Escutando em {(host, porta)}")
         lsock.listen()  #começar a escutar no 'host' e porta especificados
-        # O retorno do .select() é key e mask, key.data tem os dados e key.fileobj tem o socket que ativou um evento
         aceitar_conexao_paralela(lsock)
 except KeyboardInterrupt:
     print("Crtl+C pressionado, fechando servidor")

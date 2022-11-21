@@ -1,26 +1,35 @@
-#definir tamnho de header fixo = 2
-#tamanho tipo de dados =
-import io
 import json
-import struct
+import threading
 
 
 class Pacote:
     
     def __init__(self, sock, endereco="", listaRegistros ={}):
         self.sock = sock
+        self.nome = ""
         self.endereco = endereco
         self._recv_buffer = b""
         self._send_buffer = b""
-        self._jsonheader_len = None
+        self.tipo_req = b""
         self.jsonheader = None
-        self.request = None
-        self.response_created = False
         self.listaReg = listaRegistros
-    
+
     def _read(self, tamanho=4096):
         try:
             data = self.sock.recv(tamanho)
+        except BlockingIOError:
+            pass
+        else:
+            if data:
+                self._recv_buffer += data
+            else:
+                self.encerra_conexao(self.nome)
+                print('ata')
+                raise RuntimeError("Peer fechado")
+
+    def _read_byte(self):
+        try:
+            data = self.sock.recv(1)
         except BlockingIOError:
             pass
         else:
@@ -93,6 +102,7 @@ class Pacote:
         if nome not in self.listaReg:
             self.listaReg[nome] = {"ip": self.endereco[0], "porta": self.endereco[1]}
             print(self.listaReg)
+            self.nome = nome
             #self._send_buffer = self._json_encode(self.listaReg, "utf-8")
             self._send_buffer = b'Usuario registrado!'
             self._write()
@@ -100,6 +110,7 @@ class Pacote:
             print("Por favor escolha outro nome")
             self._send_buffer = b'Por favor escolha outro nome'
             self._write()
+            self.close()
             print(self.listaReg)
 
     def consulta_lista(self, nome):
@@ -111,22 +122,10 @@ class Pacote:
 
         self._write()
 
-    def encerra_conexao(self,nome):
+    def encerra_conexao(self, nome):
         self._send_buffer = b'Encerrando conexao!'
         del self.listaReg[nome]
         self._write()
         self.close()
-"""
-    consulta
-    {
-        tipo-pedido: 1byte
-        tamanho-nome: até 1024 bytes
-        nome-consulta: tamanho-nome-bytes
-    }
-    
-    registro
-    {
-        tipo-pedido: 1byte
-    }
-"""
+
 
