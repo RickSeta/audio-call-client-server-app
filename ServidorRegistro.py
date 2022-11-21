@@ -10,7 +10,7 @@ print_lock = threading.Lock()
 
 listaUsuarios = {}
 
-
+ 
 def aceitar_conexao_paralela(sock):
     socketCliente, enderecoCliente = sock.accept()  # Aceita nova conexao retornando o socket e o endereco
     print(f"Conexao aceita de {enderecoCliente}")
