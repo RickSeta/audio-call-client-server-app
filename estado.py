@@ -1,6 +1,6 @@
-import enum
+from enum import Enum
 
-class Estado(enum):
+class Estado(Enum):
     LOGANDO = -1
     LIVRE = 0
     CONVIDANDO = 1
