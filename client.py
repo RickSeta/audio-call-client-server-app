@@ -5,6 +5,7 @@ import pyaudio
 import ClienteRegistro
 from estado import Estado
 import constantes_conexao as cc
+import constantes_audio as ac
 
 
 class app():
