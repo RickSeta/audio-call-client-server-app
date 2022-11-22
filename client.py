@@ -14,7 +14,7 @@ class app():
         self.clienteObj = ClienteRegistro.Cliente()
         self.clienteRegistro = '' 
         self.serverUDP = socket(AF_INET, SOCK_DGRAM)
-        self.serverUDP.bind((cc.meu_ip, cc.minha_porta))
+        self.serverUDP.bind((cc.meu_ip, cc.minha_porta+1))
         self.ThreadEscuta = ''
         self.ThreadFala = ''
         self.estado = Estado.LOGANDO
