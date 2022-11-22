@@ -14,8 +14,7 @@ class app():
         self.clienteObj = ClienteRegistro.Cliente()
         self.clienteRegistro = '' 
         self.serverUDP = socket(AF_INET, SOCK_DGRAM)
-        self.endereco = self.serverUDP.getsockname()[0]
-        self.porta = self.serverUDP.getsockname()[1]
+        self.serverUDP.bind((cc.meu_ip, cc.minha_porta))
         self.ThreadEscuta = ''
         self.ThreadFala = ''
         self.estado = Estado.LOGANDO
@@ -23,9 +22,10 @@ class app():
 
     
     def run(self):
+
         print("Insira o seu nome: ")
         self.nome = input()
-        self.clienteRegistro = threading.Thread(target= self.clienteObj.iniciar_cliente, args=(self.nome, 'localhost', 5000)).start()
+        self.clienteRegistro = threading.Thread(target= self.clienteObj.iniciar_cliente, args=(self.nome, 'localhost', 5000, cc.meu_ip, cc.minha_porta)).start()
         #Posso receber convites
         self.estado = Estado.LIVRE
         #Thread que escuta convites
@@ -34,21 +34,38 @@ class app():
 
 
     def menu(self):
-        time.sleep(10)
+        time.sleep(3)
+        print("Para convidar alguem, envie 1")
+        print("Para esperar um convite, envie 2")
+        opcao = int(input())
+        while opcao != 1 and opcao != 2:
+            opcao = input()
+        if opcao == 1:
+            self.convida()
+        else:
+            self.aguarda()
+
+
+
+    def convida(self):
         self.clienteObj.libera_thread()
         dados = self.clienteObj.get_ultima_consulta()
+        if dados != "Por favor escolha outro nome" and dados != '':
+            mensagem = json.loads(dados)
+        mensagem = ''
         
         # Enquanto não convidei ninguém, verifico se convidei, ou se fui convidado 
-        while dados == "":
+        while "ip" not in mensagem:
             dados = self.clienteObj.get_ultima_consulta()
-
-
-            # Se a thread que escuta mudou o estado
-            while self.estado != Estado.LIVRE:
-                pass
-        
-        mensagem = json.loads(dados)
+            if dados != "Por favor escolha outro nome" and dados != '':
+                if dados != "Pessoa nao encontrada":
+                    mensagem = json.loads(dados)
+            if "ip" not in mensagem:
+                self.clienteObj.libera_thread()
         self.envia_convite(mensagem)
+
+    def aguarda(self):
+        self.estado = Estado.CONVIDADO
 
         
         
@@ -60,8 +77,8 @@ class app():
         output_stream = py_audio.open(ac.SETTINGS)
         
         while True:
-            mensagem = server.recvfrom(ac.BUFFER)
-            mensagem = json.loads(mensagem)
+            dados = server.recv(ac.BUFFER).decode("utf-8")
+            mensagem = json.loads(dados)
             if self.estado == Estado.LIVRE:
                 if mensagem['mensagem'] == 'CONVITE':
                     self.estado == Estado.CONVIDADO
@@ -76,16 +93,14 @@ class app():
                     if resposta == 's':
                         mensagem = {"mensagem":"ACEITO"}
                         self.estado = Estado.OCUPADO
-                        server.sendto(json.dumps(mensagem), 'localhost', 6000)
-                        enderecoContato = mensagem['dados']['ip']
-                        portaContato = mensagem['dados']['porta']
+                        self.serverUDP.send(bytes(json.dumps(mensagem), encoding="utf-8"))
                         self.ThreadFala = threading.Thread(target=self.servidor_envio, args=(enderecoContato, portaContato))
                         self.ThreadFala.start()
 
                     if resposta == 'n':
                         self.estado = Estado.LIVRE
                         mensagem = {"mensagem": "RECUSADO"}
-                        server.sendto(json.dumps(mensagem), _address=(enderecoContato, portaContato))
+                        self.serverUDP.send(bytes(json.dumps(mensagem), encoding="utf-8"))
                         self.menu()
 
 
@@ -109,37 +124,37 @@ class app():
                     self.menu()
                 else:
                     mensagem = {"mensagem":"RECUSADO"}
-                    server.send(json.dumps(mensagem))
+                    self.serverUDP.send(bytes(json.dumps(mensagem), encoding="utf-8"))
 
 
 ################################################################################################################
         
     def servidor_envio(self, server, enderecoContato, portaContato):
+        server.connect((enderecoContato, portaContato))
         py_audio = pyaudio.PyAudio()
         input_stream = py_audio.open(ac.SETTINGS)
         while self.estado == Estado.OCUPADO:
             data = input_stream.read(ac.BUFFER, exception_on_overflow=False)
             mensagem = { "mensagem": "AUDIO", "dados": data}
-            self.serverUDP.send(json.dumps(mensagem))
+            self.server.send(bytes(json.dumps(mensagem), encoding="utf-8"))
         mensagem = {"mensagem":"ENCERRAR_CHAMADA"}
-        server.send(json.dumps(mensagem))
+        self.server.send(bytes(json.dumps(mensagem), encoding="utf-8"))
 
     
     def envia_convite(self, dados):
         self.estado = Estado.CONVIDANDO
         endereco = dados['ip']
         porta = dados['porta']
-        
-        self.serverUDP.bind(endereco, porta)
         mensagem = {
-            'mensagem':'CONVITE',
+            'mensagem': 'CONVITE',
             'dados': {
                 'nome': self.nome,
-                'IP': self.endereco,
-                'port': self.porta 
+                'IP': cc.meu_ip,
+                'port': cc.minha_porta 
             }
         }
-        self.serverUDP.send(json.dumps(mensagem))
+        self.serverUDP.connect((endereco, porta))
+        self.serverUDP.send(bytes(json.dumps(mensagem), encoding="utf-8"))
 
         
 if __name__ == '__main__':
