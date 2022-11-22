@@ -1,81 +1,51 @@
+import json
 from socket import *
-
 import threading
 import pyaudio
-import json
-
-
-import audio_constants as ac
-import socket_constants as cc
-import helpers
+import ClienteRegistro
 from estado import Estado
+import constantes_conexao as cc
 
 
 class app():
     def __init__(self):
-        self.clientTCP = socket(AF_INET, SOCK_STREAM)
-        self.clientTCP.setblocking(False)
+        self.clienteObj = ClienteRegistro.Cliente()
+        self.clienteRegistro = '' 
         self.serverUDP = socket(AF_INET, SOCK_DGRAM)
+        self.ThreadEscuta = ''
+        self.ThreadFala = ''
+        self.estado = Estado.LOGANDO
+        self.run()
+
+    
+    def run(self):
+        nome = input()
+        self.clienteRegistro = threading.Thread(target= self.clienteObj.iniciar_cliente, args=(nome, cc.meu_ip, cc.minha_porta)).start()
+        #Posso receber convites
         self.estado = Estado.LIVRE
-        self.login()
-    
-    
-    def login(self): 
-        self.clientTCP.connect(cc.ip_address, cc.porta_servidor)
-        mensagem = json.loads(self.clientTCP.recv())
-        validacao = mensagem['resposta']
-        while validacao != 'ACEITO':
-            self.nome = input()
-            if (self.nome == "quit"):
-                self.clientTCP.close()
-                quit()
-            else:
-                mensagem = {'mensagem':'REGISTRO', 'nome':self.nome}
-                self.clientTCP.send(json.dumps(mensagem), cc.ip_address, cc.porta_servidor)
-                validacao = json.loads(self.clientTCP.recv())
-        self.listenThread = threading.Thread(self.escuta, self.serverUDP)
+        #Thread que escuta convites
+        self.ThreadEscuta = threading.Thread(target= self.escuta, args =(self.serverUDP))
         self.menu()
-    
 
-    def sair_da_aplicacao(self):
-        mensagem = {"mensagem":"SAIR_DA_APP"}
-        self.clientTCP.sendto(json.dumps(mensagem), (cc.ip_address, cc.porta_servidor))
-        self.clientTCP.close()
-        quit()
-
-        
 
     def menu(self):
-        helpers.mensagem_menu()
-        while self.estado == Estado.LIVRE:
-            self.entrada_do_usuario()
+        dados = self.clienteObj.get_ultima_consulta()
 
-    def entrada_do_usuario (self):
-        if self.estado == Estado.LIVRE:
-            entrada = input()
-            if (entrada == 'q'):
-                self.sair_da_aplicacao()
-            # elif (entrada == 'r'):
-            #     self.atualiza_menu()
-            else:
-                self.envia_pedido(entrada)
-                # for pessoa in range(len(self.lista)):
-                #     if entrada in self.lista[pessoa]['nome']:
-                #         enderecoContato = self.lista[pessoa]['IP']
-                #         portaContato = self.lista[pessoa]['port']
-                #         self.envia_pedido(enderecoContato, portaContato)
-                        
-    def envia_pedido(self, nome):
-        self.estado = Estado.CONVIDANDO
+        # Enquanto não convidei ninguém, verifico se convidei, ou se fui convidado 
+        while dados == "":
+
+            dados = self.clienteObj.get_ultima_consulta()
+
+            # Se a thread que escuta mudou o estado
+            while self.estado != Estado.LIVRE:
+                pass
+                
+        self.envia_convite(dados)
+
         
-        mensagem = {
-            'mensagem':'CONVITE',
-            'dados':{
-                'nome': nome,
-            }
-        }
-        self.clientTCP.send(json.dumps(mensagem))
+        
 
+################################################################################################    # 
     
     def escuta(self, server):
         py_audio = py_audio.PyAudio()
@@ -86,38 +56,41 @@ class app():
             mensagem = json.loads(mensagem)
             if self.estado == Estado.LIVRE:
                 if mensagem['mensagem'] == 'CONVITE':
-                    helpers.mensagem_da_aplicacao(mensagem['mensagem'])
                     self.estado == Estado.CONVIDADO
-                    helpers.mensagem_convidado(mensagem['dados']["nome"])
+                    enderecoContato = mensagem['dados']['ip']
+                    portaContato = mensagem['dados']['port']
+                    print(mensagem['dados']['nome'] + "quer iniciar uma chamada")
+                    print("Para aceitar a chamada, envie s")
+                    print("Para recusar a chamada, envie n")
                     resposta = input()
                     while resposta != 's' and resposta != 'n':
                         resposta = input()
                     if resposta == 's':
-                        helpers.limpa_tela()
                         mensagem = {"mensagem":"ACEITO"}
-                        self.serverUDP.sendto(json.dumps(mensagem), cc.ip_address, cc.porta_servidor)
                         self.estado = Estado.OCUPADO
-                        self.talkThread = threading.Thread(target=self.servidor_envio, args=(enderecoContato, portaContato))
-                        thread.start()
+                        server.sendto(json.dumps(mensagem), cc.ip_address, cc.porta_servidor)
+                        enderecoContato = mensagem['dados']['ip']
+                        portaContato = mensagem['dados']['porta']
+                        self.ThreadFala = threading.Thread(target=self.servidor_envio, args=(enderecoContato, portaContato))
+                        self.ThreadFala.start()
 
                     if resposta == 'n':
                         self.estado = Estado.LIVRE
                         mensagem = {"mensagem": "RECUSADO"}
-                        self.serverUDP.sendto(json.dumps(mensagem), _address=(enderecoContato, portaContato))
-                        helpers.mensagem_recusado()
+                        server.sendto(json.dumps(mensagem), _address=(enderecoContato, portaContato))
+                        self.menu()
 
 
             if self.estado == Estado.CONVIDANDO:
                 if mensagem['mensagem'] == "ACEITO":
-                    helpers.mensagem_da_aplicacao(mensagem['mensagem'])
                     self.estado = Estado.OCUPADO
-                    thread = threading.Thread(self.envia_audio, 'endereço do contato fudeu')
-                    thread.start()
+                    enderecoContato = mensagem['dados']['ip']
+                    portaContato = mensagem['dados']['porta']
+                    self.ThreadFala = threading.Thread(target=self.envia_audio, args=(server, enderecoContato, portaContato))
+                    self.ThreadFala.start()
                     # cria thread de envio
                 elif mensagem['mensagem'] == 'RECUSADO':
-                    helpers.mensagem_da_aplicacao(mensagem['mensagem'])
                     self.estado = Estado.LIVRE
-                    self.menu()
                     
             if self.estado == Estado.OCUPADO:
                 if mensagem['mensagem'] == "AUDIO":
@@ -126,14 +99,42 @@ class app():
                     self.estado = Estado.LIVRE
                 else:
                     mensagem = {"mensagem":"RECUSADO"}
-                    self.serverUDP.sendto(json.dumps(mensagem), _address=(enderecoContato, portaContato))
+                    server.send(json.dumps(mensagem))
 
-    
-    def servidor_envio(self, enderecoContato, portaContato):
+
+################################################################################################################
+        
+    def servidor_envio(self, server, enderecoContato, portaContato):
         py_audio = pyaudio.PyAudio()
         input_stream = py_audio.open(ac.SETTINGS)
         while self.estado == Estado.OCUPADO:
-            data = {"mensagem": "AUDIO", "dados":input_stream.read(ac.BUFFER, exception_on_overflow=False)}
-            self.serverUDP.sendto(json.dumps(data), enderecoContato, portaContato)
-        self.serverUDP.sendto('ENCERRAR_CHAMADA'.encode(), enderecoContato, portaContato)
-        self.atualiza_menu()
+            data = input_stream.read(ac.BUFFER, exception_on_overflow=False)
+            mensagem = { "mensagem": "AUDIO", "dados": data}
+            self.serverUDP.send(json.dumps(mensagem))
+        mensagem = {"mensagem":"ENCERRAR_CHAMADA"}
+        server.send(json.dumps(mensagem))
+
+
+    
+    
+    def envia_convite(self, dados):
+        self.estado = Estado.CONVIDANDO
+        endereco = dados['ip']
+        porta = dados['porta']
+        
+        self.serverUDP.bind(endereco, porta)
+        mensagem = {
+            'mensagem':'CONVITE',
+            'dados':{
+                'nome': self.nome,
+                'IP': cc.meu_ip,
+                'port': cc.minha_porta
+            }
+        }
+        self.serverUDP.send(json.dumps(mensagem))
+        # espera 
+
+        
+        
+        
+
