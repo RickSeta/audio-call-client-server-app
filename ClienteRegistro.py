@@ -65,10 +65,12 @@ class Cliente:
                 num = s.send(bytes(data, encoding="utf-8"))
                 print("data " + data)
                 data = s.recv(len(data)+10).decode("utf-8")
+
                 print(f"Recebido {data!r}")
                 #========================
                 if consultaTipo != "c":
                     #self._ultima_consulta = {"mensagem":data}
+
                     self._ultima_consulta = {"mensagem":data}
                 else:
                     self._ultima_consulta = {"mensagem":"consulta", "dados":data}
