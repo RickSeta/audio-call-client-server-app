@@ -29,7 +29,6 @@ class Cliente:
     def iniciar_cliente(self, nome_inicial, host, port):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        print("Socket iniciado na porta " + str(s.getsockname()), flush=True)
         manager = registroLib.Pacote(s)
         try:
             nome = nome_inicial
