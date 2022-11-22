@@ -15,7 +15,7 @@ class Cliente:
     def __init__(self):
         self._condition_espera = threading.Condition()
         self._condition_func = threading.Condition()
-        self._ultima_consulta = ""
+        self._ultima_consulta = {"mensagem": ""}
 
     HOST = "127.0.0.1"  # The server's hostname or IP address
     PORT = 5000  # The port used by the server
@@ -66,8 +66,13 @@ class Cliente:
                 print("data " + data)
                 data = s.recv(len(data)+10).decode("utf-8")
                 print(f"Recebido {data!r}")
-                if consultaTipo == 'c':
-                    self._ultima_consulta = data
+                #========================
+                if consultaTipo != "c":
+                    #self._ultima_consulta = {"mensagem":data}
+                    self._ultima_consulta = {"mensagem":data}
+                else:
+                    self._ultima_consulta = {"mensagem":"consulta", "dados":data}
+                #=========================
                 if data == "Por favor escolha outro nome":
                     nome = input("Novo nome: ")
                     registro = True
