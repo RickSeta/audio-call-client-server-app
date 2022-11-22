@@ -1,4 +1,5 @@
 import json
+import threading
 
 
 class Pacote:
@@ -89,7 +90,7 @@ class Pacote:
                     self.consulta_lista(content['consulta'])
                 elif tipo_pedido == "r":
                     print('registro')
-                    self._registra_lista(content['nome'])
+                    self._registra_lista(content['nome'], content['ip'], content['porta'])
 
                 elif tipo_pedido == 'f':
                     aberto = False
@@ -98,9 +99,9 @@ class Pacote:
                     raise ValueError(f"Seguinte tipo nao valido: '{tipo_pedido}'.")
 
 
-    def _registra_lista(self, nome):
+    def _registra_lista(self, nome, ip, porta):
         if nome not in self.listaReg:
-            self.listaReg[nome] = {"ip": self.endereco[0], "porta": self.endereco[1]}
+            self.listaReg[nome] = {"ip": ip, "porta": porta}
             print(self.listaReg)
             self.nome = nome
             #self._send_buffer = self._json_encode(self.listaReg, "utf-8")

@@ -24,8 +24,8 @@ class app():
     
     def run(self):
         print("Insira o seu nome: ")
-        nome = input()
-        self.clienteRegistro = threading.Thread(target= self.clienteObj.iniciar_cliente, args=(nome, 'localhost', 5000)).start()
+        self.nome = input()
+        self.clienteRegistro = threading.Thread(target= self.clienteObj.iniciar_cliente, args=(self.nome, 'localhost', 5000)).start()
         #Posso receber convites
         self.estado = Estado.LIVRE
         #Thread que escuta convites
@@ -99,12 +99,14 @@ class app():
                     # cria thread de envio
                 elif mensagem['mensagem'] == 'RECUSADO':
                     self.estado = Estado.LIVRE
+                    self.menu()
                     
             if self.estado == Estado.OCUPADO:
                 if mensagem['mensagem'] == "AUDIO":
                     output_stream.write(mensagem['dados'])
                 elif mensagem['mensagem'] == "ENCERRAR_CHAMADA":
                     self.estado = Estado.LIVRE
+                    self.menu()
                 else:
                     mensagem = {"mensagem":"RECUSADO"}
                     server.send(json.dumps(mensagem))
@@ -138,7 +140,6 @@ class app():
             }
         }
         self.serverUDP.send(json.dumps(mensagem))
-        # espera 
 
         
 if __name__ == '__main__':
