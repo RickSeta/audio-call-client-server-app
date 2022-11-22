@@ -5,12 +5,11 @@ import threading
 
 
 def libera_espera():
-    print("func espera")
     clienteObj.libera_thread()
 
 
 clienteObj = ClienteRegistro.Cliente()
-clientThread = threading.Thread(target=clienteObj.iniciar_cliente, args=('lol', 'localhost', 5000)).start()
+clientThread = threading.Thread(target=clienteObj.iniciar_cliente, args=('lol', 'localhost', 5000, '1.17.6.45', 6754)).start()
 
 
 time.sleep(2)

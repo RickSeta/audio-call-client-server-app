@@ -28,10 +28,9 @@ class Cliente:
     def get_ultima_consulta(self):
         return self._ultima_consulta
 
-    def iniciar_cliente(self, nome_inicial, host, port):
+    def iniciar_cliente(self, nome_inicial, host, port, ipUDP, portaUDP):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        print("Socket iniciado na porta " + str(s.getsockname()), flush=True)
         manager = registroLib.Pacote(s)
         try:
             nome = nome_inicial
@@ -46,7 +45,7 @@ class Cliente:
                     if primeira:
                         s.connect((host, int(port)))
                         primeira = False
-                    m = {"nome": nome, "tipo-pedido": 'r'}
+                    m = {"nome": nome, "tipo-pedido": 'r', "ip": ipUDP, "porta": portaUDP}
                 else:
                     try:
                         self._condition_espera.acquire()
