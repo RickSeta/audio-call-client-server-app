@@ -1,6 +1,5 @@
 import sys
 import socket
-import selectors
 import registroLib
 
 from _thread import *

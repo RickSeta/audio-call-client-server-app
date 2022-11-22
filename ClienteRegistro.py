@@ -1,8 +1,6 @@
 # echo-client.py
 import json
-import selectors
 import socket
-import sys
 import threading
 from datetime import time
 
