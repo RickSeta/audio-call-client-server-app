@@ -41,8 +41,6 @@ class app():
 
 
     def menu(self):
-        mensagem = ''
-        print("while libera menu")
         while self.liberaMenu:
             dados = self.clienteObj.get_ultima_consulta()
             if dados["mensagem"] == "Usuario registrado!":
@@ -82,29 +80,33 @@ class app():
         py_audio = pyaudio.PyAudio()
         output_stream = py_audio.open(format=ac.FORMAT, output=True, rate=ac.RATE, channels=ac.CHANNELS,
                                       frames_per_buffer=ac.BUFFER)
-        print("def escuta")
         while True:
             dados = server.recv(ac.BUFFER).decode("utf-8")
             mensagem = json.loads(dados)
             if self.estado == Estado.LIVRE:
-                print("def escuta estado livre")
                 if mensagem["mensagem"] == "CONVITE":
-                    print("def escuta estado livre mensagem convite")
                     self.estado == Estado.CONVIDADO
-                    info = json.loads(dados["dados"])
+                    info = mensagem["dados"]
                     enderecoContato = info["ip"]
                     portaContato = info["porta"]
-                    print(mensagem["dados"]["nome"] + "quer iniciar uma chamada")
+                    print(mensagem["dados"]["nome"] + " quer iniciar uma chamada")
                     print("Para aceitar a chamada, envie s")
                     print("Para recusar a chamada, envie n")
                     resposta = input()
                     while resposta != 's' and resposta != 'n':
                         resposta = input()
                     if resposta == 's':
-                        mensagem = {"mensagem":"ACEITO"}
+                        mensagem = {"mensagem":"ACEITO", "dados": {
+                "nome": self.nome,
+                "ip": self.clientIP,
+                "porta": self.clientPort
+                } 
+            }
+
+
                         self.estado = Estado.OCUPADO
                         server.sendto(bytes(json.dumps(mensagem), encoding="utf-8"), (enderecoContato, portaContato))
-                        self.ThreadFala = threading.Thread(target=self.servidor_envio, args=(enderecoContato, portaContato))
+                        self.ThreadFala = threading.Thread(target=self.servidor_envio, args=(server, enderecoContato, portaContato))
                         self.ThreadFala.start()
 
                     if resposta == 'n':
@@ -116,14 +118,12 @@ class app():
 
             
             if self.estado == Estado.CONVIDANDO:
-                print("def escuta convidado")
                 if mensagem["mensagem"] == "ACEITO":
-                    print("def escuta convidado mensagem aceito")
                     self.estado = Estado.OCUPADO
-                    info = json.loads(mensagem["dados"])
+                    info = mensagem["dados"]
                     enderecoContato = info["ip"]
                     portaContato = info["porta"]
-                    self.ThreadFala = threading.Thread(target=self.envia_audio, args=(server, enderecoContato, portaContato))
+                    self.ThreadFala = threading.Thread(target=self.servidor_envio, args=(server, enderecoContato, portaContato))
                     self.ThreadFala.start()
                     # cria thread de envio
                 elif mensagem["mensagem"] == "RECUSADO":
@@ -131,20 +131,18 @@ class app():
                     self.menu()
                     
             if self.estado == Estado.OCUPADO:
-                print("def escuta ocupado")
                 if mensagem["mensagem"] == "AUDIO":
                     output_stream.write(mensagem["dados"])
                 elif mensagem["mensagem"] == "ENCERRAR_CHAMADA":
                     self.estado = Estado.LIVRE
                     self.menu()
-                else:
-                    info = json.loads(mensagem["dados"])
+                elif mensagem["mensagem"] != "ACEITO":
+                    info = mensagem["dados"]
                     mensagem = {"mensagem":"RECUSADO"}
                     enderecoContato = info["ip"]
                     portaContato = info["porta"]
                     
                     server.sendto(bytes(json.dumps(mensagem), encoding="utf-8"), (enderecoContato, portaContato))
-            print("while escuta")
 
 
 ################################################################################################################
@@ -172,10 +170,9 @@ class app():
             "dados": {
                 "nome": self.nome,
                 "ip": self.clientIP,
-                "port": self.clientPort
+                "porta": self.clientPort
             }
         }
-        print("connect server udp")
         self.serverUDP.connect((endereco, porta))
         self.serverUDP.send(bytes(json.dumps(mensagem), encoding="utf-8"))
 
